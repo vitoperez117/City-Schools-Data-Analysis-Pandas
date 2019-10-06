@@ -1,0 +1,140 @@
+#Import library
+import pandas as pd
+
+#Set filepaths
+schools_csv = "Resources/schools_complete.csv"
+students_csv = "Resources/students_complete.csv"
+
+#Read filepaths into pandas
+schools_pd = pd.read_csv(schools_csv)
+students_pd = pd.read_csv(students_csv)
+
+#Merge dataframes
+combined_pd = pd.merge(schools_pd,students_pd, how = "right", on = ["school_name"])
+
+#Assess Data
+combined_pd.head()
+combined_pd.tail()
+combined_pd.info()
+combined_pd.dtypes
+combined_pd.columns
+
+#District Summary
+columns = combined_pd.columns
+
+total_schools = len(combined_pd["school_name"].unique())
+
+total_students = len(combined_pd["student_name"])
+
+total_budget = (combined_pd["budget"].unique()).sum()
+
+avg_math_score = combined_pd["math_score"].mean()
+
+avg_reading_score = combined_pd["reading_score"].mean()
+
+pass_math_pd = combined_pd.loc[combined_pd["math_score"] >= 70, columns]
+percent_pass_math = (len(pass_math_pd["math_score"])/len(combined_pd["math_score"]))*100
+
+pass_read_pd = combined_pd.loc[combined_pd["reading_score"] >= 70, columns]
+percent_pass_read = (len(pass_read_pd["reading_score"])/len(combined_pd["reading_score"]))*100
+
+
+overall_pass_rate = ((percent_pass_math + percent_pass_read)/2)
+
+district_summary_df = pd.DataFrame({"Total Schools": [total_schools],
+                                 "Total Students": [total_students],
+                                 "Total Budget": [total_budget],
+                                 "Average Math Score": [avg_math_score],
+                                 "Average Reading Score": [avg_reading_score],
+                                 "% Passing Math": [percent_pass_math],
+                                 "% Passing Reading": [percent_pass_read],
+                                    "% Overall Pass Rate": [overall_pass_rate]
+                                })
+district_summary_df
+
+#School Summary
+combined_pd["% Pass Math"] = (combined_pd["math_score"]>=70)*100
+combined_pd["% Pass Reading"] = (combined_pd["reading_score"]>=70)*100
+
+
+#Isolate columns
+combined_pd = combined_pd[['school_name', 'type', 'size', 'budget','reading_score', 'math_score',
+       '% Pass Math', '% Pass Reading']]
+
+#Groupby School Name and take mean
+school_summary_avg = combined_pd.groupby("school_name").mean().reset_index()
+
+
+#Add "Per Student Budget" Column
+school_summary_avg["Per Student Budget"] = school_summary_avg["budget"]/school_summary_avg["size"]
+
+schools_pd = schools_pd.drop(['School ID','size','budget'],axis = 1)
+school_summary_avg = pd.merge(school_summary_avg,schools_pd, on ='school_name')
+school_summary_avg
+
+#Rename Columns
+school_summary = school_summary_avg.rename(columns = {"school_name": "School Name",
+                                                      "size": "Total Students",
+                                                      "budget": "Total School Budget",
+                                                      "reading_score": "Average Reading Score",
+                                                      "math_score":"Average Math Score",
+                                                      "type": "School Type"
+                                                 })
+
+school_summary ["Overall Pass %"] = (school_summary ["% Pass Math"]+school_summary ["% Pass Reading"])/2
+
+school_summary = school_summary[["School Name","Total Students","Total School Budget","School Type","Per Student Budget",
+                               "Overall Pass %","Average Reading Score","% Pass Reading","Average Math Score","% Pass Math"]]
+school_summary.set_index("School Name")
+school_summary
+
+
+#Top Performing Schools
+top_schools = school_summary.sort_values("Overall Pass %", ascending = False)
+top_schools = top_schools.set_index("School Name")
+top_schools.head()
+
+
+#Bottom Performing Schools
+bottom_schools = top_schools.tail()
+
+
+#Math and Reading Scores by Grade
+avg_score_grade = students_pd.loc[:,["school_name","grade","reading_score","math_score"]]
+avg_score_grade = avg_score_grade.rename(columns = {"school_name":"School",
+                                         "grade": "Grade",
+                                         "reading_score": "Average Reading Score",
+                                         "math_score": "Average Math Score"})
+avg_score_grade = avg_score_grade.groupby(["School","Grade"]).mean()
+avg_score_grade.sort_values(["Grade"],ascending = False, inplace=False)
+avg_score_grade
+
+
+#Sort by School Spending
+top_schools = top_schools.sort_values("Per Student Budget",ascending = False)
+top_schools
+
+bins = [575,600,625,650,675]
+budget_labels = ["Below Average","Average","High","Very High"]
+pd.cut(top_schools["Per Student Budget"],bins,labels = budget_labels)
+top_schools ["Level of School Spending"] = pd.cut(top_schools["Per Student Budget"],bins,labels = budget_labels)
+
+school_spending = top_schools [['Level of School Spending','Overall Pass %', 'Average Reading Score',
+       '% Pass Reading', 'Average Math Score', '% Pass Math',
+       'Level of School Spending']]
+school_spending
+
+
+#Sort by School Size
+sort_school_size = top_schools [['Total Students','Overall Pass %', 'Average Reading Score',
+       '% Pass Reading', 'Average Math Score', '% Pass Math']]
+
+sort_school_size.sort_values("Total Students",ascending = False)
+
+
+#Sort by School Type
+sort_type_schools = top_schools[['School Type', 'Overall Pass %', 'Average Reading Score',
+       '% Pass Reading', 'Average Math Score', '% Pass Math']]
+
+sort_type_schools = top_schools.sort_values("School Type",ascending = True)
+sort_type_schools
