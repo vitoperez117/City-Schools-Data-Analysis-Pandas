@@ -3,6 +3,7 @@
 1) PyCitySchools.ipynb
 1) PyCitySchools.py
 1) PyCitySchools-vs-code
+1) PyCitySchools Analysis.docx
 
 ### Contents of code
   * District Summary
