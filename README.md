@@ -1,4 +1,4 @@
-# Pandas Challenge
+# City-Schools-Data-Analysis-Pandas
 ## Contents
 1) PyCitySchools.ipynb
 1) PyCitySchools.py
